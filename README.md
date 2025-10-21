@@ -26,7 +26,7 @@ https://github.com/user-attachments/assets/10624d70-571d-45c6-bbf0-cd3ca2105387
 - **Deterministic random seeding** for reproducibility
 - **Real-time statistics**:
   - 3D π estimate: $\hat{\pi}_{3D} = 6p$ where $p = \frac{\text{inside}}{\text{total}}$
-  - 2D π estimate from slice: $\hat{\pi}_{2D} = \frac{4}{r^2} \cdot \frac{\text{inside}_{\text{slice}}}{\text{total}_{\text{slice}}}$
+  - ![pi equation](https://latex.codecogs.com/svg.latex?\hat{\pi}_{2D}=\frac{4}{r^2}\cdot\frac{\text{inside}_{\text{slice}}}{\text{total}_{\text{slice}}})
   - Absolute error from true π value
   - FPS counter and elapsed time
 
