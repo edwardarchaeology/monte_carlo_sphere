@@ -83,11 +83,13 @@ The slice square is $[-1,1]^2$ with area 4.
 
 The circle has area $\pi r^2$.
 
-From the slice data alone:
-$$\frac{\text{inside}_{\text{slice}}}{\text{total}_{\text{slice}}} \approx \frac{\pi r^2}{4}$$
+**From the slice data alone:**
 
-Therefore:
-$$\hat{\pi}_{2D} = \frac{4}{r^2} \cdot \frac{\text{inside}_{\text{slice}}}{\text{total}_{\text{slice}}}$$
+![slice_ratio](https://latex.codecogs.com/svg.latex?\frac{\text{inside}_{\text{slice}}}{\text{total}_{\text{slice}}}\approx\frac{\pi%20r^2}{4})
+
+**Therefore:**
+
+![pi_estimate](https://latex.codecogs.com/svg.latex?\hat{\pi}_{2D}=\frac{4}{r^2}\cdot\frac{\text{inside}_{\text{slice}}}{\text{total}_{\text{slice}}})
 
 This estimate is only valid when $r > 0$ (i.e., $|s| < 1$) and sufficient points exist in the slice.
 
