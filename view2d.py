@@ -107,19 +107,24 @@ class View2DSlice:
         self.ax.add_patch(self.square_patch)
         
         # Calculate circle radius
+        # Always create a circle patch so the artist exists; hide it when r<=0
         r_squared = 1.0 - self.slice_pos ** 2
+        r = 0.0
         if r_squared > 0:
-            r = np.sqrt(r_squared)
-            self.circle_patch = Circle(
-                (0, 0), r,
-                fill=False,
-                edgecolor='cyan',
-                linewidth=2,
-                linestyle='--',
-                alpha=0.7,
-                zorder=1
-            )
-            self.ax.add_patch(self.circle_patch)
+            r = float(np.sqrt(r_squared))
+
+        # Create circle patch (may be radius 0) and control visibility
+        self.circle_patch = Circle(
+            (0, 0), r,
+            fill=False,
+            edgecolor='cyan',
+            linewidth=2,
+            linestyle='--',
+            alpha=0.7,
+            zorder=1
+        )
+        self.circle_patch.set_visible(r > 0.0)
+        self.ax.add_patch(self.circle_patch)
         
         # Update title and labels
         axis_names = ['X', 'Y', 'Z']
@@ -160,21 +165,30 @@ class View2DSlice:
             all_points: All generated points, shape (n, 3)
             all_masks: Inside/outside masks for all points, shape (n,)
         """
-        if len(all_points) == 0:
-            # Clear scatter plots
-            self.inside_scatter.set_offsets(np.empty((0, 2)))
-            self.outside_scatter.set_offsets(np.empty((0, 2)))
-            self.canvas.draw_idle()
-            return
+        # Update circle radius/visibility based on current slice_pos
+        r_squared = 1.0 - self.slice_pos ** 2
+        if self.circle_patch is not None:
+            if r_squared > 0:
+                r = float(np.sqrt(r_squared))
+                self.circle_patch.set_radius(r)
+                self.circle_patch.set_visible(True)
+            else:
+                # Tangent or outside: hide circle
+                self.circle_patch.set_radius(0.0)
+                self.circle_patch.set_visible(False)
         
         # Filter points in slice slab
         axis_coords = all_points[:, self.axis]
         in_slab = np.abs(axis_coords - self.slice_pos) <= (self.thickness / 2.0)
         
         if not np.any(in_slab):
-            # No points in slice
+            # No points in slice - set empty offsets but keep artists alive
             self.inside_scatter.set_offsets(np.empty((0, 2)))
             self.outside_scatter.set_offsets(np.empty((0, 2)))
+            # Update title to show current slice parameters even when empty
+            axis_names = ['X', 'Y', 'Z']
+            title = f'Slice {axis_names[self.axis]}={self.slice_pos:.2f} (Δ={self.thickness:.3f})'
+            self.ax.set_title(title, color='white', fontsize=14, pad=10)
             self.canvas.draw_idle()
             return
         
@@ -201,12 +215,23 @@ class View2DSlice:
         else:
             self.outside_scatter.set_offsets(np.empty((0, 2)))
         
+        # Update title to include current radius if available
+        axis_names = ['X', 'Y', 'Z']
+        title = f'Slice {axis_names[self.axis]}={self.slice_pos:.2f} (Δ={self.thickness:.3f})'
+        if r_squared > 0:
+            title += f' — r={np.sqrt(r_squared):.3f}'
+        self.ax.set_title(title, color='white', fontsize=14, pad=10)
+
         self.canvas.draw_idle()
     
     def clear(self):
         """Clear all points from the slice view."""
         self.inside_scatter.set_offsets(np.empty((0, 2)))
         self.outside_scatter.set_offsets(np.empty((0, 2)))
+        # Hide circle on clear (keeps artist but invisible)
+        if self.circle_patch is not None:
+            self.circle_patch.set_visible(False)
+        # Keep axes and bounds intact
         self.canvas.draw()
     
     def screenshot(self, filename: str):

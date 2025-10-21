@@ -1,0 +1,76 @@
+('C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+ 'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\build_temp\\montepi\\MontePi3D.pkg',
+ {'BINARY': True,
+  'DATA': True,
+  'EXECUTABLE': True,
+  'EXTENSION': True,
+  'PYMODULE': True,
+  'PYSOURCE': True,
+  'PYZ': False,
+  'SPLASH': True,
+  'SYMLINK': False},
+ [('pyi-contents-directory _internal', '', 'OPTION'),
+  ('PYZ-00.pyz',
+   'C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+   'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\build_temp\\montepi\\PYZ-00.pyz',
+   'PYZ'),
+  ('struct',
+   'C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+   'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\build_temp\\montepi\\localpycs\\struct.pyc',
+   'PYMODULE'),
+  ('pyimod01_archive',
+   'C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+   'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\build_temp\\montepi\\localpycs\\pyimod01_archive.pyc',
+   'PYMODULE'),
+  ('pyimod02_importers',
+   'C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+   'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\build_temp\\montepi\\localpycs\\pyimod02_importers.pyc',
+   'PYMODULE'),
+  ('pyimod03_ctypes',
+   'C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+   'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\build_temp\\montepi\\localpycs\\pyimod03_ctypes.pyc',
+   'PYMODULE'),
+  ('pyimod04_pywin32',
+   'C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+   'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\build_temp\\montepi\\localpycs\\pyimod04_pywin32.pyc',
+   'PYMODULE'),
+  ('pyiboot01_bootstrap',
+   'C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+   'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\.venv\\lib\\site-packages\\PyInstaller\\loader\\pyiboot01_bootstrap.py',
+   'PYSOURCE'),
+  ('pyi_rth_inspect',
+   'C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+   'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_inspect.py',
+   'PYSOURCE'),
+  ('pyi_rth_pyside6',
+   'C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+   'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_pyside6.py',
+   'PYSOURCE'),
+  ('pyi_rth_pkgutil',
+   'C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+   'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_pkgutil.py',
+   'PYSOURCE'),
+  ('pyi_rth_multiprocessing',
+   'C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+   'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_multiprocessing.py',
+   'PYSOURCE'),
+  ('pyi_rth_mplconfig',
+   'C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+   'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_mplconfig.py',
+   'PYSOURCE'),
+  ('pyi_rth_pkgres',
+   'C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+   'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_pkgres.py',
+   'PYSOURCE'),
+  ('main',
+   'C:\\Users\\C00607628\\OneDrive - University of Louisiana at '
+   'Lafayette\\Documents\\github_repos\\Monte_Carlo\\montepi_qt3d\\main.py',
+   'PYSOURCE')],
+ 'python310.dll',
+ True,
+ False,
+ False,
+ [],
+ None,
+ None,
+ None)

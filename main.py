@@ -14,13 +14,64 @@ from typing import Optional
 
 import numpy as np
 from PySide6.QtCore import Qt, QTimer, Signal, Slot
-from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox
+from PySide6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QFileDialog,
+    QMessageBox,
+    QAbstractSpinBox,
+    QGroupBox,
+    QLabel,
+    QTextEdit,
+    QFormLayout,
+)
+from PySide6.QtGui import QFont
+from PySide6.QtGui import QIcon
 from PySide6.QtUiTools import QUiLoader
+from PySide6.QtGui import QPixmap
+from io import BytesIO
+import matplotlib.pyplot as plt
 
-from simulation import MonteCarloPi3D
-from view3d import create_3d_view, View3DBase
-from view2d import View2DSlice
-from theme import apply_theme, DARK_THEME, LIGHT_THEME
+# Local imports: these are project-local modules. When running from a PyInstaller-built
+# executable or from other working directories, Python's import machinery may not find
+# them. Use a guarded import that adds the project directory to sys.path as a fallback.
+try:
+    from simulation import MonteCarloPi3D
+    from view3d import create_3d_view, View3DBase
+    from view2d import View2DSlice
+    from theme import apply_theme, DARK_THEME, LIGHT_THEME
+except ModuleNotFoundError:
+    # Robust fallback for frozen/executable environments (PyInstaller, onefile/onedir, etc.)
+    candidates = []
+    try:
+        # Directory containing this source file (works when running from source)
+        candidates.append(Path(__file__).resolve().parent)
+    except Exception:
+        pass
+    try:
+        # Directory containing the running executable/script (works when frozen)
+        candidates.append(Path(sys.argv[0]).resolve().parent)
+    except Exception:
+        pass
+    # PyInstaller sets sys._MEIPASS to the temporary extraction path for onefile mode
+    meipass = getattr(sys, '_MEIPASS', None)
+    if meipass:
+        try:
+            candidates.append(Path(meipass))
+        except Exception:
+            pass
+
+    # Insert any unique candidate directories at front of sys.path
+    for p in candidates:
+        sp = str(p)
+        if sp and sp not in sys.path:
+            sys.path.insert(0, sp)
+
+    # Retry imports; if these still fail we'll let the original exception propagate
+    from simulation import MonteCarloPi3D
+    from view3d import create_3d_view, View3DBase
+    from view2d import View2DSlice
+    from theme import apply_theme, DARK_THEME, LIGHT_THEME
 
 
 class MonteCarloApp(QMainWindow):
@@ -80,6 +131,171 @@ class MonteCarloApp(QMainWindow):
         # Window properties
         self.setWindowTitle("3D Monte Carlo π Approximation")
         self.resize(1400, 900)
+        # Fix spinbox button hitboxes for better UX (small embedded +/- areas can be hard to click)
+        try:
+            self.fix_spinbox_buttons()
+        except Exception:
+            # Non-fatal if styling fails on a platform
+            pass
+
+        # Create a boxed Pi Estimates area (large, bold) and an About blurb
+        try:
+            # Pi estimates group
+            pi_group = QGroupBox("Pi Estimates")
+            pi_form = QFormLayout()
+            bold = QFont()
+            bold.setBold(True)
+
+            self.pi3d_big = QLabel("—")
+            self.pi3d_big.setFont(bold)
+            self.err3d_big = QLabel("—")
+            self.err3d_big.setFont(bold)
+            self.pi2d_big = QLabel("—")
+            self.pi2d_big.setFont(bold)
+            self.err2d_big = QLabel("—")
+            self.err2d_big.setFont(bold)
+
+            pi_form.addRow("π (3D):", self.pi3d_big)
+            pi_form.addRow("Error (3D):", self.err3d_big)
+            pi_form.addRow("π (2D Slice):", self.pi2d_big)
+            pi_form.addRow("Error (2D):", self.err2d_big)
+            pi_group.setLayout(pi_form)
+
+            # About blurb
+            about_group = QGroupBox("About")
+            # Prepare an about container: include rendered formulas if possible, and always include a plain-text explanation
+            about_container = QLabel()
+            try:
+                # use a QWidget with vertical layout to assemble content
+                from PySide6.QtWidgets import QWidget, QVBoxLayout
+                about_container = QWidget()
+                ac_layout = QVBoxLayout(about_container)
+                ac_layout.setContentsMargins(6, 6, 6, 6)
+
+                # Instead of large rendered formula images, show a formatted HTML about text
+                desc = QTextEdit()
+                desc.setReadOnly(True)
+                desc.setFrameStyle(0)
+                about_html = """
+<h3>About — math &amp; slice π estimation</h3>
+<h4>Overview</h4>
+<p>This app estimates &pi; by Monte Carlo sampling inside the unit cube <code>[-1,1]^3</code> and testing whether points fall inside the unit sphere <code>x^2 + y^2 + z^2 &le; 1</code>. It also computes an independent 2D estimate of &pi; from points in a thin slab (a &quot;slice&quot;) centered on a plane <code>A = s</code> (A is X, Y or Z). The following explains the exact geometry and the estimators used.</p>
+
+<h4>3D volume-based estimator (brief)</h4>
+<p>We uniformly sample points in the cube. Let <code>N</code> be the total number of sampled points and <code>M</code> be the number inside the sphere.<br>
+Volume of cube = 8. Volume of unit sphere = (4/3)&pi; · 1^3 = 4&pi;/3.<br>
+The probability <code>p</code> of a random point landing inside the sphere is <code>p = V_sphere / V_cube = (4&pi;/3) / 8 = &pi; / 6</code>.<br>
+So an unbiased estimator for &pi; is: <code>&circ;pi;^_3D = 6 · M / N</code>.</p>
+
+<h4>Geometry of a slice</h4>
+<p>Consider the plane <code>A = s</code> (|s| &le; 1) with axis A ∈ {x,y,z}. The intersection of the unit sphere with this plane is a circle of radius:</p>
+<pre>r(s) = sqrt(1 - s^2)</pre>
+<p>(If |s| &gt; 1 the plane misses the sphere; if |s| = 1 the circle degenerates to a point.)</p>
+
+<h4>2D slice estimator — ideal plane</h4>
+<p>If we could sample uniformly on the plane inside the square <code>[-1,1]^2</code>, the probability a point falls inside the circle would be:</p>
+<pre>p_2D = π · r(s)^2 / 4</pre>
+<p>Rearranging gives the ideal-2D estimator for &pi;:</p>
+<pre>π^_2D,plane = 4 · (I / T) / r(s)^2</pre>
+<p>where <code>T</code> = number of points sampled on the plane (inside the square) and <code>I</code> = number of those that lie inside the circle. Valid only when <code>r(s) &gt; 0</code>.</p>
+
+<h4>Practical implementation: slab of finite thickness Δ</h4>
+<p>In the app we select points that fall into a slab (thickness Δ) centered on s:</p>
+<pre>slab = { (x,y,z) : |A - s| ≤ Δ/2 }</pre>
+<p>Points in the slab are projected onto the plane and used for the 2D test. Using a slab increases sample count (reduces variance) but introduces bias because different slices inside the slab have different radii r(A).</p>
+
+<h4>Using slab data to estimate π (practical estimator)</h4>
+<p>Let <code>N_total</code> = total generated points, <code>T</code> = number that fell inside the slab, <code>I</code> = number of those that are inside the sphere. Project slab points onto the slice plane and treat them as 2D samples; the practical estimator is:</p>
+<pre>π^_2D = 4 · (I / T) / r(s)^2</pre>
+<p>with <code>r(s) = sqrt(1 - s^2)</code>. This assumes Δ small so r(A) variation inside the slab is negligible.</p>
+
+<h4>Stability, bias, and variance — practical rules</h4>
+<ul>
+  <li><strong>Tangent / near-zero radius:</strong> when s ≈ ±1, r(s) → 0 — do not compute π2D if <code>r(s) &lt; r_min</code> (e.g., 1e-3) or if T is too small.</li>
+  <li><strong>Minimum samples:</strong> if T &lt; T_min (e.g., 50–200) the 2D estimate is too noisy — display &quot;—&quot; instead.</li>
+  <li><strong>Bias vs variance:</strong> increasing Δ increases T but biases the estimator. Keep Δ small (recommended 0.01–0.05). To reduce variance without bias, increase total N_total.</li>
+</ul>
+
+<h4>Approx expected slab count</h4>
+<p>E[T] ≈ N_total · (Δ / 2). Example: N_total = 100,000 and Δ = 0.02 → expected T ≈ 1000.</p>
+
+<h4>Example numeric calculation</h4>
+<p>Suppose s = 0.3, so r ≈ 0.953939. Suppose T = 1000 and I = 785. Then I/T = 0.785 and:</p>
+<pre>π^_2D ≈ 4 / r^2 · (I / T) ≈ 4 / 0.909 · 0.785 ≈ 3.45</pre>
+
+<h4>Implementation suggestions</h4>
+<ul>
+  <li>Show sliceCount (T) and only display π2D when T ≥ T_min and r(s) ≥ r_min.</li>
+  <li>Show approximate expected T = N_total · (Δ / 2).</li>
+  <li>For a less-biased thicker slab compute a weighted correction integrating r(A) over the slab (more complex).</li>
+</ul>
+
+<h4>Key formulas summary</h4>
+<pre>r(s) = sqrt(1 - s^2)
+Ideal 2D estimator (plane): π = 4 · (I / T) / r^2
+Expected slab samples: E[T] ≈ N_total · (Δ / 2)</pre>
+"""
+                desc.setHtml(about_html)
+                ac_layout.addWidget(desc)
+            except Exception:
+                # Fallback: single QTextEdit
+                about_container = QTextEdit()
+                about_container.setReadOnly(True)
+                about_container.setPlainText(
+                    "This application estimates π using a 3D Monte Carlo method inside the unit sphere.\n\n"
+                    "Controls and math info unavailable in this build."
+                )
+
+            about_layout = QFormLayout()
+            about_layout.addRow(about_container)
+            about_group.setLayout(about_layout)
+
+            # Make left dock contents scrollable
+            try:
+                from PySide6.QtWidgets import QScrollArea
+                scroll = QScrollArea()
+                scroll.setWidgetResizable(True)
+                # move existing contents into scroll area
+                inner = self.ui.dockWidgetContents
+                scroll.setWidget(inner)
+                # replace dock contents with the scroll area
+                self.ui.controlDock.setWidget(scroll)
+                dock_layout = inner.layout()
+            except Exception:
+                dock_layout = self.ui.dockWidgetContents.layout()
+            try:
+                stats_idx = dock_layout.indexOf(self.ui.statsGroup)
+            except Exception:
+                stats_idx = -1
+
+            # Try to insert the About group into the right panel placeholder if present
+            try:
+                about_placeholder = getattr(self.ui, 'aboutPlaceholder', None)
+                if about_placeholder is not None:
+                    # Place the assembled about_container widget inside the placeholder layout
+                    ph_layout = about_placeholder.layout()
+                    ph_layout.addWidget(about_container)
+                    # Insert pi_group into the dock above statsGroup
+                    if stats_idx >= 0:
+                        dock_layout.insertWidget(stats_idx, pi_group)
+                    else:
+                        dock_layout.addWidget(pi_group)
+                else:
+                    if stats_idx >= 0:
+                        dock_layout.insertWidget(stats_idx, pi_group)
+                        dock_layout.insertWidget(stats_idx + 1, about_group)
+                    else:
+                        dock_layout.addWidget(pi_group)
+                        dock_layout.addWidget(about_group)
+            except Exception:
+                if stats_idx >= 0:
+                    dock_layout.insertWidget(stats_idx, pi_group)
+                    dock_layout.insertWidget(stats_idx + 1, about_group)
+                else:
+                    dock_layout.addWidget(pi_group)
+                    dock_layout.addWidget(about_group)
+        except Exception:
+            pass
     
     def setup_views(self):
         """Set up 3D and 2D visualization canvases."""
@@ -231,6 +447,12 @@ class MonteCarloApp(QMainWindow):
         all_points = self.simulation.get_all_points()
         all_masks = self.simulation.get_all_masks()
         self.view_2d.update_slice_data(all_points, all_masks)
+        # Update 3D slice plane visualization (if supported)
+        try:
+            if hasattr(self.view_3d, 'set_slice_plane'):
+                self.view_3d.set_slice_plane(axis, slice_pos, thickness)
+        except Exception:
+            pass
     
     def update_statistics(self):
         """Update all statistics labels."""
@@ -243,11 +465,32 @@ class MonteCarloApp(QMainWindow):
         if self.simulation.total > 0:
             pi_3d = self.simulation.pi3d
             err_3d = self.simulation.abs_err3d
-            self.ui.pi3DLabel.setText(f"{pi_3d:.6f}")
-            self.ui.err3DLabel.setText(f"{err_3d:.6f}")
+            # Update small labels if they still exist in the UI
+            lbl = getattr(self.ui, 'pi3DLabel', None)
+            if lbl is not None:
+                try:
+                    lbl.setText(f"{pi_3d:.6f}")
+                except Exception:
+                    pass
+            lbl = getattr(self.ui, 'err3DLabel', None)
+            if lbl is not None:
+                try:
+                    lbl.setText(f"{err_3d:.6f}")
+                except Exception:
+                    pass
+            # Update big pi labels
+            try:
+                self.pi3d_big.setText(f"{pi_3d:.6f}")
+                self.err3d_big.setText(f"{err_3d:.6f}")
+            except Exception:
+                pass
         else:
-            self.ui.pi3DLabel.setText("—")
-            self.ui.err3DLabel.setText("—")
+            lbl = getattr(self.ui, 'pi3DLabel', None)
+            if lbl is not None:
+                lbl.setText("—")
+            lbl = getattr(self.ui, 'err3DLabel', None)
+            if lbl is not None:
+                lbl.setText("—")
         
         # 2D slice statistics
         axis = self.ui.sliceAxisCombo.currentIndex()
@@ -261,11 +504,30 @@ class MonteCarloApp(QMainWindow):
         self.ui.sliceCountLabel.setText(f"{total_slice:,}")
         
         if total_slice > 0 and (1.0 - slice_pos ** 2) > 0:
-            self.ui.pi2DLabel.setText(f"{pi_2d:.5f}")
-            self.ui.err2DLabel.setText(f"{err_2d:.5f}")
+            lbl2 = getattr(self.ui, 'pi2DLabel', None)
+            if lbl2 is not None:
+                try:
+                    lbl2.setText(f"{pi_2d:.5f}")
+                except Exception:
+                    pass
+            lbl2e = getattr(self.ui, 'err2DLabel', None)
+            if lbl2e is not None:
+                try:
+                    lbl2e.setText(f"{err_2d:.5f}")
+                except Exception:
+                    pass
+            try:
+                self.pi2d_big.setText(f"{pi_2d:.5f}")
+                self.err2d_big.setText(f"{err_2d:.5f}")
+            except Exception:
+                pass
         else:
-            self.ui.pi2DLabel.setText("—")
-            self.ui.err2DLabel.setText("—")
+            lbl2 = getattr(self.ui, 'pi2DLabel', None)
+            if lbl2 is not None:
+                lbl2.setText("—")
+            lbl2e = getattr(self.ui, 'err2DLabel', None)
+            if lbl2e is not None:
+                lbl2e.setText("—")
         
         # Update elapsed time
         if self.is_running:
@@ -356,6 +618,45 @@ class MonteCarloApp(QMainWindow):
         """Apply the current theme based on checkbox state."""
         dark = self.ui.darkThemeCheck.isChecked()
         apply_theme(QApplication.instance(), dark)
+
+    def fix_spinbox_buttons(self):
+        """Increase the clickable area of embedded +/- buttons on spinboxes.
+
+        This applies a targeted QSS and ensures the widgets use PlusMinus symbols.
+        """
+        names = ("targetSpin", "batchSpin", "slicePosSpin", "sliceThicknessSpin")
+        qss = """
+QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+    min-width: 18px;
+    max-width: 30px;
+    width: 24px;
+}
+QSpinBox, QDoubleSpinBox {
+    padding-left: 6px;
+    /* leave room on the right for the up/down buttons so they don't overlap the text */
+    padding-right: 34px;
+}
+/* Ensure buttons are positioned at the right top / right bottom respectively */
+QSpinBox::up-button { subcontrol-origin: padding; subcontrol-position: right top; }
+QSpinBox::down-button { subcontrol-origin: padding; subcontrol-position: right bottom; }
+QDoubleSpinBox::up-button { subcontrol-origin: padding; subcontrol-position: right top; }
+QDoubleSpinBox::down-button { subcontrol-origin: padding; subcontrol-position: right bottom; }
+"""
+
+        for name in names:
+            spin = getattr(self.ui, name, None)
+            if spin is None:
+                continue
+            # Ensure plus/minus symbols (in case .ui didn't persist on some platforms)
+            try:
+                spin.setButtonSymbols(QAbstractSpinBox.PlusMinus)
+            except Exception:
+                pass
+            # Apply QSS to expand clickable area without changing visual style much
+            try:
+                spin.setStyleSheet(qss)
+            except Exception:
+                pass
     
     @Slot()
     def save_png(self):
@@ -447,17 +748,42 @@ class MonteCarloApp(QMainWindow):
 
 def main():
     """Application entry point."""
+    # On Windows, set the AppUserModelID so the taskbar uses our icon and groups correctly.
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            # Use a reverse-DNS style AppID for proper taskbar grouping; change to your org/app id if desired
+            app_id = u"com.yourorg.montepi"
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+        except Exception:
+            # Non-fatal if not available
+            pass
+
     # Enable high DPI scaling
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-    
+
     # Create application
     app = QApplication(sys.argv)
+    # Set application-wide icon (use a .ico on Windows for best results)
+    try:
+        icon_path = Path(__file__).parent / "assets" / "app.ico"
+        app_icon = QIcon(str(icon_path))
+        if not app_icon.isNull():
+            app.setWindowIcon(app_icon)
+    except Exception:
+        app_icon = None
+
     app.setApplicationName("Monte Carlo π 3D")
     app.setOrganizationName("MontePi")
     
     # Create and show main window
     window = MonteCarloApp()
+    try:
+        if 'app_icon' in locals() and app_icon is not None:
+            window.setWindowIcon(app_icon)
+    except Exception:
+        pass
     window.show()
     
     # Run event loop
