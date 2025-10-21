@@ -2,9 +2,14 @@
 
 This document describes how to build a distributable Windows application (EXE) for MontePi3D using PyInstaller.
 
+## Current state
+
+- A working Windows build is included in this repo at `dist\MontePi3D\MontePi3D.exe`. Use that for quick testing.
+
 ## Prerequisites
 
-- Windows machine with Visual C++ redistributable installed (for VTK DLLs).
+-+- Windows machine with Visual C++ redistributable installed (for VTK DLLs).
+
 - Python venv (we assume `.venv` in project root). Activate it first.
 - PyInstaller installed in the venv: `pip install pyinstaller`
 
@@ -20,19 +25,33 @@ This document describes how to build a distributable Windows application (EXE) f
 
 3. After completion, check `dist\MontePi3D` and run `dist\MontePi3D\MontePi3D.exe`.
 
-If you prefer a one-file EXE change the `build_exe.ps1` invocation to use `--onefile` or run PyInstaller directly.
+If the default `dist\MontePi3D` is locked (OneDrive or running executable), build into a temporary dist and copy the folder manually:
+
+```powershell
+.\.venv\Scripts\pyinstaller.exe --noconfirm --clean --distpath .\dist_new --workpath .\build_temp montepi.spec
+Copy-Item -LiteralPath .\dist_new\MontePi3D -Destination .\dist -Recurse -Force
+```
+
+If you prefer a single-file EXE change the `build_exe.ps1` invocation to use `--onefile` or run PyInstaller directly.
 
 ## Common problems and fixes
 
 - Missing DLL / import errors for VTK: rebuild using `--onedir` and inspect the `dist\MontePi3D` folder to find which DLLs are missing. You may need to add `--add-binary` entries or modify `montepi.spec` to include specific VTK binaries.
 - Qt platform plugin missing (qwindows.dll): find your PySide6 plugins path and add the `platforms` folder either as data or binary in the spec. Example `--add-binary "C:\path\to\PySide6\plugins\platforms\qwindows.dll;PySide6\plugins\platforms"`.
-- PyInstaller warnings: check `build\<name>\warn-<name>.txt` for modules PyInstaller couldn't find and add them to `hiddenimports` in `montepi.spec`.
+- PyInstaller warnings: check `build\<name>\warn-<name>.txt` (or `build_temp\<name>`) for modules PyInstaller couldn't find and add them to `hiddenimports` in `montepi.spec`.
 - Visual C++ runtime errors on target machine: install Microsoft Visual C++ Redistributable (x64) on the target.
 
 ## Tips
 
 - Start with `--onedir` to iterate quickly. Once everything works, try `--onefile` if you need a single EXE.
+- If OneDrive is enabled on your project folder, it can cause file-locking problems when PyInstaller tries to remove or replace `dist\MontePi3D`. Either pause OneDrive sync for the repo during builds or build to a different `--distpath` and copy the result.
 - Use a virtual machine or clean Windows VM to validate the built package.
 - If you need help including extra data or DLLs, run the EXE from command-line to capture stdout/stderr (remove `--windowed` temporarily to see console output).
 
-If you want, I can run the build here and iterate on any missing modules — say the word and I'll run `build_exe.ps1` and report back with the first run logs and fixes.
+If you want, I can add a small `clean.ps1` helper that:
+
+- Stops a running exe (if present),
+- Builds to a temporary dist path, and
+- Copies the result into `dist\MontePi3D` with a timestamped backup of any existing folder.
+
+Contact me with how you'd like that script to behave and I'll add it.

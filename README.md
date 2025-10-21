@@ -155,221 +155,87 @@ python main.py
    - Adjust thickness to include more/fewer points
    - Watch the 2D π estimate update in real-time
 
-4. **Export results**:
-   - **Save PNG**: Captures both 3D and 2D views as `filename_3D.png` and `filename_2D.png`
-   - **Export CSV**: Saves all points in CSV format for further analysis
+# 3D Monte Carlo π Approximation
 
-### Performance Tips
+This repository contains a PySide6 desktop GUI that demonstrates Monte Carlo approximation of π by sampling points in the cube [-1,1]^3 and testing membership in the unit sphere.
 
-- **Large datasets**: For millions of points, use larger batch sizes (10,000+) to reduce GUI overhead
-- **Smooth animation**: Keep batch size moderate (1,000-5,000) for responsive visualization
-- **PyVista vs Matplotlib**: PyVista can handle millions of points; Matplotlib caps at ~100,000 displayed points
-- **Slice thickness**: Smaller thickness values give cleaner slices but fewer points for estimation
+## Current status
 
-## Project Structure
+- A working Windows build is available in `dist/MontePi3D/MontePi3D.exe` (built with PyInstaller).
+- Temporary build artifacts and `__pycache__` directories were cleaned from the repo. The project's virtual environment remains at `.venv/`.
 
-```
-montepi_qt3d/
-├── ui/
-│   └── main_window.ui          # Qt Designer UI definition
-├── tests/
-│   └── test_simulation.py      # Unit tests for simulation logic
-├── main.py                     # Application entry point
-├── simulation.py               # Monte Carlo simulation core
-├── view3d.py                   # 3D visualization (PyVista + Matplotlib)
-├── view2d.py                   # 2D slice visualization
-├── theme.py                    # Dark/light QSS themes
-├── requirements.txt            # Python dependencies
-└── README.md                   # This file
+## Quick start
+
+To run the prebuilt executable (Windows):
+
+```powershell
+.\dist\MontePi3D\MontePi3D.exe
 ```
 
-## Modifying the UI with Qt Designer
+To run from source (requires a Python venv with dependencies):
 
-The user interface is defined in `ui/main_window.ui`, which can be edited with Qt Designer.
-
-### Opening in Qt Designer
-
-1. Install Qt Designer:
-
-   ```bash
-   pip install pyqt6-tools
-   ```
-
-2. Locate Qt Designer executable:
-
-   - Windows: `<python>\Lib\site-packages\qt6_applications\Qt\bin\designer.exe`
-   - macOS/Linux: `designer` or `designer-qt6`
-
-3. Open the UI file:
-   ```bash
-   designer ui/main_window.ui
-   ```
-
-### Important Widget objectNames
-
-The code relies on these specific `objectName` properties:
-
-**Containers:**
-
-- `plot3DHost`: QWidget for 3D visualization
-- `plot2DHost`: QWidget for 2D slice view
-- `mainSplitter`: QSplitter containing both views
-
-**Buttons:**
-
-- `startButton`, `pauseButton`, `stepButton`, `resetButton`
-- `randomizeSeedButton`
-- `savePNGButton`, `exportCSVButton`
-
-**Inputs:**
-
-- `targetSpin` (QSpinBox), `targetSlider` (QSlider)
-- `batchSpin` (QSpinBox)
-- `seedEdit` (QLineEdit)
-- `sliceAxisCombo` (QComboBox)
-- `slicePosSpin` (QDoubleSpinBox), `slicePosSlider` (QSlider)
-- `sliceThicknessSpin` (QDoubleSpinBox)
-- `darkThemeCheck` (QCheckBox)
-
-**Labels:**
-
-- `totalLabel`, `insideLabel`, `outsideLabel`
-- `pi3DLabel`, `pi2DLabel`
-- `err3DLabel`, `err2DLabel`
-- `sliceCountLabel`, `fpsLabel`, `elapsedLabel`
-
-**Important**: Do not change these `objectName` values without updating the corresponding references in `main.py`.
-
-## Architecture Details
-
-### simulation.py
-
-- **`MonteCarloPi3D`**: Pure simulation logic, no GUI dependencies
-- Vectorized operations using NumPy for efficiency
-- Stores all generated points for slice computation
-- Provides both 3D and 2D π estimates
-
-### view3d.py
-
-- **`View3DBase`**: Abstract base class for 3D views
-- **`View3DPyVista`**: High-performance PyVista implementation
-  - Direct GPU rendering with VTK backend
-  - Point sprites with depth testing
-  - Interactive camera controls
-- **`View3DMatplotlib`**: Fallback using Matplotlib's `Axes3D`
-  - Software rendering with point limit
-  - Manual scatter plot updates
-- **`create_3d_view()`**: Factory function that auto-selects implementation
-
-### view2d.py
-
-- **`View2DSlice`**: Matplotlib-based 2D slice view
-- Efficient scatter plot updates using `set_offsets()`
-- Dynamic circle radius calculation: $r = \sqrt{1 - s^2}$
-- Synchronized with 3D view via main application
-
-### main.py
-
-- **`MonteCarloApp`**: Main QMainWindow subclass
-- Loads UI from `.ui` file using `QUiLoader`
-- Wires all signals/slots for event handling
-- QTimer-based update loop (~30 FPS)
-- Manages simulation state and view updates
-
-### theme.py
-
-- Dark and light QSS (Qt Style Sheet) definitions
-- Comprehensive widget styling
-- Toggle function for runtime theme switching
-
-## Testing
-
-Run the test suite:
-
-```bash
+```powershell
 cd montepi_qt3d
-pytest tests/test_simulation.py -v
+.\.venv\Scripts\Activate.ps1
+python main.py
 ```
 
-Tests include:
+## Dependencies
 
-- Deterministic behavior with fixed seeds
-- Correct inside/outside classification
-- Statistical convergence to π (with 1M points)
-- Slice computation accuracy
-- Edge cases (empty simulation, tangent slices)
+Install dependencies into the project venv:
 
-## Performance Characteristics
+```powershell
+pip install -r requirements.txt
+```
 
-### PyVista Mode
+requirements.txt includes: PySide6, numpy, matplotlib, pyvista, pyvistaqt.
 
-- **Capacity**: 10M+ points in real-time
-- **FPS**: 30-60 FPS with continuous generation
-- **Memory**: ~80 MB per million points
+## Building a distributable
 
-### Matplotlib Fallback Mode
+This project includes a PyInstaller spec and a helper script. Recommended workflow on Windows:
 
-- **Capacity**: 100K displayed points (others tracked but not shown)
-- **FPS**: 10-30 FPS depending on point count
-- **Memory**: ~40 MB per million points (tracked)
+1. Activate the venv:
 
-### Typical Convergence
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
 
-- **1,000 points**: Error ~0.1
-- **10,000 points**: Error ~0.03
-- **100,000 points**: Error ~0.01
-- **1,000,000 points**: Error ~0.003
+2. Run the build helper (invokes PyInstaller with `montepi.spec`):
 
-## Troubleshooting
+```powershell
+.\build_exe.ps1
+```
 
-### PyVista fails to import
+If the default `dist\MontePi3D` is locked (Windows/OneDrive or running executable), build into a temporary dist path instead:
 
-**Solution**: The application automatically falls back to Matplotlib. To use PyVista:
+```powershell
+.\.venv\Scripts\pyinstaller.exe --noconfirm --clean --distpath .\dist_new --workpath .\build_temp montepi.spec
+```
 
-1. Ensure OpenGL drivers are up to date
-2. Try reinstalling: `pip uninstall pyvista pyvistaqt; pip install pyvista pyvistaqt`
-3. On remote systems, set `export DISPLAY=:0` or use VNC
+## Troubleshooting notes
 
-### Slow performance with Matplotlib
+- If PyInstaller can't remove or overwrite `dist\MontePi3D`, it's usually because files are locked by a running process or OneDrive sync. Close the app and pause OneDrive syncing, or build to a different `--distpath` and then copy the folder into `dist`.
+- If Qt platform plugin errors occur (e.g. missing `qwindows.dll`), add the PySide6 `platforms` plugin to the spec as an `--add-binary` entry or include it in `montepi.spec`.
+- Inspect `build_temp\montepi\warn-montepi.txt` (or `build\montepi\warn-montepi.txt`) for missing imports and add them to `hiddenimports` in `montepi.spec` if needed.
 
-**Solution**:
+## Repository housekeeping
 
-- Reduce target points to <100,000
-- Increase batch size to reduce update frequency
-- Use PyVista for better performance
+- The `.venv/` folder is intentionally kept. Remove it only if you want to delete the virtual environment.
+- Consider adding `dist/` and other build artifacts to `.gitignore` to avoid committing binaries:
 
-### UI file not loading
+```
+# local build artifacts
+dist/
+build/
+*.exe
+.venv/
+__pycache__/
+```
 
-**Solution**: Ensure you're running from the `montepi_qt3d` directory and `ui/main_window.ui` exists.
+If you want, I can add a small `clean.ps1` script to automate backup/copy/remove steps and add `dist/` to `.gitignore`.
 
-### Theme not applying
-
-**Solution**: Check that `darkThemeCheck` widget exists in UI and has correct `objectName`.
-
-## Future Enhancements
-
-Possible extensions:
-
-- Multi-threading with `QThread` for background generation
-- GPU acceleration with CuPy for batch generation
-- Animation recording (video export)
-- Additional estimators (Buffon's needle, etc.)
-- Convergence plots over time
-- Confidence intervals using CLT
-
-## License
-
-This project is provided as-is for educational purposes.
-
-## Credits
-
-Developed as a demonstration of:
-
-- Monte Carlo methods in computational mathematics
-- Qt/PySide6 GUI development
-- Scientific visualization with PyVista and Matplotlib
-- Clean Python architecture with separation of concerns
+More details and developer notes are in `README_BUILD.md` (build tips and common fixes).
 
 ---
 
-**Enjoy exploring π in 3D!** 🎲🎯
+Enjoy exploring π in 3D!
