@@ -2,7 +2,7 @@
 
 A sophisticated desktop GUI application that demonstrates Monte Carlo approximation of π using 3D random sampling. The application generates random points in a cube $[-1,1]^3$ and checks whether they fall inside the unit sphere $x^2 + y^2 + z^2 \leq 1$.
 
-![Application Screenshot](docs/screenshot.png)
+https://github.com/user-attachments/assets/7fd0410b-847e-4276-9f66-61c5be5e38af
 
 ## Features
 
