@@ -2,8 +2,7 @@
 
 A sophisticated desktop GUI application that demonstrates Monte Carlo approximation of π using 3D random sampling. The application generates random points in a cube $[-1,1]^3$ and checks whether they fall inside the unit sphere $x^2 + y^2 + z^2 \leq 1$.
 
-https://github.com/user-attachments/assets/10624d70-571d-45c6-bbf0-cd3ca2105387
-
+![Application Screenshot](docs/screenshot.png)
 
 ## Features
 
@@ -26,7 +25,7 @@ https://github.com/user-attachments/assets/10624d70-571d-45c6-bbf0-cd3ca2105387
 - **Deterministic random seeding** for reproducibility
 - **Real-time statistics**:
   - 3D π estimate: $\hat{\pi}_{3D} = 6p$ where $p = \frac{\text{inside}}{\text{total}}$
-  - ![pi equation](https://latex.codecogs.com/svg.latex?\hat{\pi}_{2D}=\frac{4}{r^2}\cdot\frac{\text{inside}_{\text{slice}}}{\text{total}_{\text{slice}}})
+  - 2D π estimate from slice: $\hat{\pi}_{2D} = \frac{4}{r^2} \cdot \frac{\text{inside}_{\text{slice}}}{\text{total}_{\text{slice}}}$
   - Absolute error from true π value
   - FPS counter and elapsed time
 
@@ -83,13 +82,11 @@ The slice square is $[-1,1]^2$ with area 4.
 
 The circle has area $\pi r^2$.
 
-**From the slice data alone:**
+From the slice data alone:
+$$\frac{\text{inside}_{\text{slice}}}{\text{total}_{\text{slice}}} \approx \frac{\pi r^2}{4}$$
 
-![slice_ratio](https://latex.codecogs.com/svg.latex?\frac{\text{inside}_{\text{slice}}}{\text{total}_{\text{slice}}}\approx\frac{\pi%20r^2}{4})
-
-**Therefore:**
-
-![pi_estimate](https://latex.codecogs.com/svg.latex?\hat{\pi}_{2D}=\frac{4}{r^2}\cdot\frac{\text{inside}_{\text{slice}}}{\text{total}_{\text{slice}}})
+Therefore:
+$$\hat{\pi}_{2D} = \frac{4}{r^2} \cdot \frac{\text{inside}_{\text{slice}}}{\text{total}_{\text{slice}}}$$
 
 This estimate is only valid when $r > 0$ (i.e., $|s| < 1$) and sufficient points exist in the slice.
 
@@ -220,22 +217,6 @@ If the default `dist\MontePi3D` is locked (Windows/OneDrive or running executabl
 - If PyInstaller can't remove or overwrite `dist\MontePi3D`, it's usually because files are locked by a running process or OneDrive sync. Close the app and pause OneDrive syncing, or build to a different `--distpath` and then copy the folder into `dist`.
 - If Qt platform plugin errors occur (e.g. missing `qwindows.dll`), add the PySide6 `platforms` plugin to the spec as an `--add-binary` entry or include it in `montepi.spec`.
 - Inspect `build_temp\montepi\warn-montepi.txt` (or `build\montepi\warn-montepi.txt`) for missing imports and add them to `hiddenimports` in `montepi.spec` if needed.
-
-## Repository housekeeping
-
-- The `.venv/` folder is intentionally kept. Remove it only if you want to delete the virtual environment.
-- Consider adding `dist/` and other build artifacts to `.gitignore` to avoid committing binaries:
-
-```
-# local build artifacts
-dist/
-build/
-*.exe
-.venv/
-__pycache__/
-```
-
-If you want, I can add a small `clean.ps1` script to automate backup/copy/remove steps and add `dist/` to `.gitignore`.
 
 More details and developer notes are in `README_BUILD.md` (build tips and common fixes).
 
